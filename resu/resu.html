@@ -1,0 +1,195 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>レーシングゲーム</title>
+<script>
+var canvas,context;
+var player,enemy;
+var timer=null;
+
+var points=[[160,100],[480,100],[520,240],[480,380],[160,380],[100,240]];
+
+function GameObject(color,x,y){
+
+this.color=color;
+
+this.init(x,y);
+
+}
+
+GameObject.prototype.init=function(x,y){
+
+this.x=x;
+this.y=y;
+this.angle=0;
+this.speed=3;
+this.checkPoint=0;
+this.lap=0;
+}
+
+GameObject.prototype.getNextPoint=function(){
+
+var next=this.checkPoint+1;
+if (next==points.length)next=0;
+var dx=points[next][0]-this.x;
+var dy=points[next][1]-this.y;
+
+var angle=Math.atan2(dy,dx);
+if(angle<0)angle+=2*Math.PI;
+
+var d=Math.sqrt(Math.pow(dx,2)+Math.pow(dy,2));
+
+return {"angle":angle,"distance":d};
+}
+
+GameObject.prototype.setCheckPoint=function(){
+
+this.checkPoint++;
+if(this.checkPoint==points.length){
+this.checkPoint=0;
+//2ページ目
+this.lap++;
+}
+}
+
+GameObject.prototype.setAngleSpeed=function(){
+
+var target=this.getNextPoint().angle
+
+var angle=0;
+if(target-this.angle>0.1)angle=0.1;
+if(target-this.angle>Math.PI)angle=-0.1;
+if(this.angle-target>0.1)angle=-0.1;
+if(this.angle-target>Math.PI)angle=0.1;
+this.angle+=angle;
+
+
+var d=this.getNextPoint().distance;
+
+if(d<50){
+
+if(this.speed>0.1)this.speed-=0.1;
+
+if(d<5)this.setCheckPoint();
+}else{
+this.speed+=0.1;
+}
+}
+
+GameObject.prototype.move=function(){
+
+if(this.speed>5)this.speed=5;
+if(this.speed<0)this.speed=0;
+if(this.angle>2*Math.PI)this.angle-=2*Math.PI;
+
+this.x+=Math.cos(this.angle)*this.speed;
+this.y+=Math.sin(this.angle)*this.speed;
+
+context.fillStyle=this.color;
+context.save();
+context.translate(this.x,this.y);
+context.rotate(this.angle);
+context.fillRect(-20,-10,40,20);
+context.restore();
+}
+
+function init(){
+
+canvas=document.getElementById("circuit");
+//3ページ目
+context=canvas.getContext("2d");
+
+
+player=new GameObject("blue",280,120);
+enemy= new GameObject("red",280,80);
+
+
+draw();
+}
+
+function drawOval(r,color){
+
+context.fillStyle=color;
+context.beginPath();
+context.moveTo(220,240-r);
+context.lineTo(420,240-r);
+context.arc(420,240,r,-Math.PI/2,Math.PI/2);
+context.lineTo(220,240+r);
+context.arc(220,240,r,Math.PI/2,Math.PI/2*3);
+context.closePath();
+context.fill();
+context.stroke();
+}
+
+function drawCircuit(){
+
+drawOval(200,"lightgrey");
+
+if(!context.isPointInPath(player.x,player.y))player.speed=0.2;
+
+
+drawOval(80,"forestgreen");
+
+if(context.isPointInPath(player.x,player.y))player.speed=0.2;
+
+context.beginPath();
+context.strokeRect(320,40,5,120);
+}
+
+function draw(){
+
+context.fillStyle="forestgreen";
+context.fillRect(0,0,canvas.width,canvas.height);
+
+
+drawCircuit();
+
+//4ページ目
+player.move();
+if(player.getNextPoint().distance<100)player.setCheckPoint();
+
+
+enemy.move();
+enemy.setAngleSpeed();
+
+
+var winner="none";
+if((player.lap==3)&&(player.x>320))winner="blue";
+if((enemy.lap==3)&&(enemy.x>320))winner="red";
+if(winner!="none"){
+context.fillStyle=winner;
+context.textAlign="center";
+context.font="32px'arial'";
+context.fillText("Winner:"+winner,320,240);
+
+
+clearInterval(timer);
+timer=null;
+}
+}
+
+function startGame(){
+player.init(280,120);
+enemy.init(280,80);
+if(timer==null)timer=setInterval(draw,50);
+}
+
+document.onkeydown=function(e){
+
+if((e.key=="ArrowUp")||(e.key=="Up"))player.speed+=0.1;
+if((e.key=="ArrowDown")||(e.key=="Down"))player.speed-=0.1;
+
+if((e.key=="ArrowLeft")||(e.key=="Left"))player.angle-=0.1;
+if((e.key=="ArrowRight")||(e.key=="Right"))player.angle+=0.1;
+}
+</script>
+</head>
+<body onload="init()">
+<p>レーシングゲーム</p>
+<input type="button" value="スタート"onclick="startGame()">
+[↑]:スピードアップ [↓]:スピードダウン [←][→]:方向変更
+<hr>
+<canvas id="circuit"width="640"height="480"></canvas>
+</body>
+</html>
